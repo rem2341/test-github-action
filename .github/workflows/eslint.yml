@@ -29,5 +29,6 @@ jobs:
           npm install eslint
 
       - name: Run ESLint
-        run: npx eslint 
+        run: npx eslint .
+          --config eslint.config.mjs
         continue-on-error: true
