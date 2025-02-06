@@ -30,4 +30,4 @@ jobs:
 
       - name: Run ESLint
         run: npx eslint
-        continue-on-error: true
+        continue-on-error: false
