@@ -11,7 +11,7 @@ name: ESLint
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "develop" ]
 
 jobs:
   eslint:
@@ -24,10 +24,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: "**/*.js, **/*.jsx, **/*.ts, **/*.tsx"
+
       - name: Install ESLint
         run: |
           npm install eslint
 
-      - name: Run ESLint
-        run: npx eslint
+      - name: Run ESLint on changed files
+        run: |
+            if [ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]; then
+              npx eslint ${{ steps.changed-files.outputs.all_changed_files }}
+            else
+              echo "No changed JavaScript/TypeScript files to lint."
+            fi
         continue-on-error: false
