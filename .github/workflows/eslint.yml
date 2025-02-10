@@ -1,47 +1,52 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# ESLint is a tool for identifying and reporting on patterns
-# found in ECMAScript/JavaScript code.
-# More details at https://github.com/eslint/eslint
-# and https://eslint.org
-
-name: ESLint
+name: Lint Changed Files on PR
 
 on:
   pull_request:
     branches: [ "main" ]
+    types: [opened, synchronize, reopened]
 
 jobs:
   eslint:
-    name: Run eslint scanning
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Install dependencies
-        run: npm ci
+    - name: Get base branch info
+      run: |
+        echo "BASE_REF=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
+        echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: "**/*.js, **/*.jsx, **/*.ts, **/*.tsx"
+    - name: Fetch base branch
+      run: git fetch origin ${{ env.BASE_REF }} --depth=1
 
-      - name: Install ESLint
-        run: |
-          npm install eslint
+    - name: Get changed files
+      id: changed-files
+      run: |
+        # Get list of changed files with allowed extensions
+        CHANGED=$(git diff --name-only --diff-filter=ACMRT ${{ env.BASE_SHA }} ${{ github.sha }} | grep -E '\.(js|jsx|ts|tsx|mjs|cjs)$' || true)
+        
+        # Format for output
+        if [ -z "$CHANGED" ]; then
+          echo "No changed files detected"
+          echo "CHANGED_FILES=" >> $GITHUB_ENV
+        else
+          echo "Changed files detected:"
+          echo "$CHANGED"
+          echo "CHANGED_FILES=${CHANGED}" >> $GITHUB_ENV
+        fi
 
-      - name: Run ESLint on changed files
-        run: |
-            if [ -n "${{ steps.changed-files.outputs.all_changed_files }}" ]; then
-              npx eslint ${{ steps.changed-files.outputs.all_changed_files }}
-            else
-              echo "No changed JavaScript/TypeScript files to lint."
-            fi
-        continue-on-error: false
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run ESLint on changed files
+      if: env.CHANGED_FILES != ''
+      run: npx eslint ${{ env.CHANGED_FILES }}
+      continue-on-error: false
