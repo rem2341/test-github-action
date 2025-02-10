@@ -5,5 +5,4 @@ if (a)
 
 if (a) 
     console.log("abc");
-
 var a = 30;
