@@ -1,55 +1,42 @@
-name: Lint Changed Files on PR
+name: ESLint PR Check (Changed Files Only)
 
 on:
   pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+    branches:
+      - main  # Replace with your default branch name (e.g., master, main, etc.)
 
 jobs:
   eslint:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0  # Fetch full history to avoid "bad object" errors
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for `git diff` to work properly
 
-    - name: Get base branch info
-      run: |
-        echo "BASE_REF=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
-        echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18  # Replace with your desired Node.js version
 
-    - name: Fetch base branch
-      run: git fetch origin ${{ env.BASE_REF }} --depth=1
+      - name: Install dependencies
+        run: npm install
 
-    - name: Get changed files
-      id: changed-files
-      run: |
-        # Get list of changed files with allowed extensions
-        CHANGED=$(git diff --name-only --diff-filter=ACMRT ${{ env.BASE_SHA }} ${{ github.sha }} | grep -E '\.(js|jsx|ts|tsx|mjs|cjs)$' || true)
-        
-        # Format for output
-        if [ -z "$CHANGED" ]; then
-          echo "No changed files detected"
-          echo "CHANGED_FILES=" >> $GITHUB_ENV
-        else
-          echo "Changed files detected:"
-          echo "$CHANGED"
-          echo "CHANGED_FILES=${CHANGED}" >> $GITHUB_ENV
-        fi
-      continue-on-error: false
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get the list of changed files in the PR
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT HEAD^ HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          echo "::set-output name=files::$CHANGED_FILES"
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-
-    - name: Install dependencies
-      run: npm install
-
-    - name: Run ESLint on changed files
-      if: env.CHANGED_FILES != ''
-      run: |
-        echo "${{ env.CHANGED_FILES }}" | tr ' ' '\n' | xargs -I{} npx eslint "{}"
-      continue-on-error: false
+      - name: Run ESLint on changed files
+        run: |
+          if [ -n "${{ steps.changed-files.outputs.files }}" ]; then
+            echo "Running ESLint on changed files:"
+            echo "${{ steps.changed-files.outputs.files }}"
+            npx eslint ${{ steps.changed-files.outputs.files }}
+          else
+            echo "No files changed. Skipping ESLint."
+          fi
