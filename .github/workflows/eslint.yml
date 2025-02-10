@@ -36,7 +36,7 @@ jobs:
           if [ -n "${{ steps.changed-files.outputs.files }}" ]; then
             echo "Running ESLint on changed files:"
             echo "${{ steps.changed-files.outputs.files }}"
-            npx eslint ${{ steps.changed-files.outputs.files }}
+            echo "${{ steps.changed-files.outputs.files }}" | xargs npx eslint --max-warnings=0
           else
             echo "No files changed. Skipping ESLint."
           fi
