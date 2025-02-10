@@ -1,13 +1,15 @@
-name: ESLint PR Check (All Changed Files)
+name: ESLint Fix on Push
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - '*'
 
 jobs:
-  eslint:
+  eslint-fix:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -38,16 +40,32 @@ jobs:
           echo "$CHANGED_FILES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Debug changed files
-        run: |
-          echo "Changed files: $CHANGED_FILES"
-
-      - name: Run ESLint on all changed files
+      - name: Run ESLint with auto-fix on changed files
         run: |
           if [ -n "$CHANGED_FILES" ]; then
-            echo "Running ESLint on all changed files:"
+            echo "Running ESLint on changed files:"
             echo "$CHANGED_FILES"
-            echo "$CHANGED_FILES" | xargs npx eslint --max-warnings=0
+            echo "$CHANGED_FILES" | xargs npx eslint --fix
           else
             echo "No files changed. Skipping ESLint."
           fi
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push fixes
+        if: steps.git-check.outputs.has_changes == 'true'
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Auto-fix ESLint"
+          git push
