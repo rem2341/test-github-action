@@ -38,6 +38,7 @@ jobs:
           echo "$CHANGED"
           echo "CHANGED_FILES=${CHANGED}" >> $GITHUB_ENV
         fi
+      continue-on-error: false
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -51,3 +52,4 @@ jobs:
       if: env.CHANGED_FILES != ''
       run: |
         echo "${{ env.CHANGED_FILES }}" | tr ' ' '\n' | xargs -I{} npx eslint "{}"
+      continue-on-error: false
