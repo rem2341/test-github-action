@@ -29,3 +29,7 @@ else console.log("abc");
 if (a)
     console.log("abc");
 console.log("abc");
+
+if (a)
+    console.log("abc");
+console.log("abc");
